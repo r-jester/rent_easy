@@ -3,11 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../../models/property.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/payment_provider.dart';
 import '../../providers/property_provider.dart';
 import '../../utils/extensions.dart';
 import '../../widgets/custom_button.dart';
-import 'payment_success_screen.dart';
 
 class FakePaymentScreen extends StatefulWidget {
   final Property property;
@@ -19,10 +17,10 @@ class FakePaymentScreen extends StatefulWidget {
 }
 
 class _FakePaymentScreenState extends State<FakePaymentScreen> {
-  String _selectedMethod = 'ABA Pay (Mock)';
   DateTime? _moveInDate;
   int _leaseMonths = 12;
   final TextEditingController _noteController = TextEditingController();
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -30,45 +28,49 @@ class _FakePaymentScreenState extends State<FakePaymentScreen> {
     super.dispose();
   }
 
-  Future<void> _pay() async {
-    final auth = context.read<AuthProvider>();
-    final payment = await context.read<PaymentProvider>().processPayment(
-          propertyId: widget.property.id,
-          userId: auth.currentUserId ?? '',
-          amount: widget.property.pricePerMonth,
-          method: _selectedMethod,
-        );
+  Future<void> _submitBookingRequest() async {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
 
-    if (payment.status == 'Success') {
-      await context.read<PropertyProvider>().createBooking(
-            propertyId: widget.property.id,
-            renterId: auth.currentUserId ?? '',
-            moveInDate: _moveInDate,
-            leaseMonths: _leaseMonths,
-            note: _noteController.text,
-            paymentId: payment.id,
-          );
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PaymentSuccessScreen(payment: payment),
-        ),
-      );
-    } else {
+    final auth = context.read<AuthProvider>();
+    final propertyProvider = context.read<PropertyProvider>();
+    final renterId = auth.currentUserId ?? '';
+
+    // Check if renter already has active booking for this property
+    if (propertyProvider.hasActiveBookingForProperty(renterId, widget.property.id)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mock payment failed. Try again.')),
+        const SnackBar(
+          content: Text('You already have a pending or approved booking for this property'),
+          backgroundColor: Colors.red,
+        ),
       );
+      setState(() => _isSubmitting = false);
+      return;
     }
+
+    await propertyProvider.createBooking(
+      propertyId: widget.property.id,
+      renterId: renterId,
+      moveInDate: _moveInDate,
+      leaseMonths: _leaseMonths,
+      note: _noteController.text,
+    );
+
+    if (!mounted) return;
+    setState(() => _isSubmitting = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Booking request sent. Pay after owner approval.'),
+      ),
+    );
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<PaymentProvider>();
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Fake Payment')),
+      appBar: AppBar(title: const Text('Booking Request')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
@@ -83,7 +85,7 @@ class _FakePaymentScreenState extends State<FakePaymentScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Pay ${widget.property.pricePerMonth.toUsd()} for ${widget.property.title}',
+                          'Request ${widget.property.title} (${widget.property.pricePerMonth.toUsd()}/month)',
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 16),
@@ -136,28 +138,15 @@ class _FakePaymentScreenState extends State<FakePaymentScreen> {
                             hintText: 'Tell owner your move-in preferences...',
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        const Text('Select Payment Method'),
-                        const SizedBox(height: 8),
-                        ...const ['ABA Pay (Mock)', 'Wing (Mock)', 'Credit Card (Mock)']
-                            .map(
-                              (method) => RadioListTile<String>(
-                                value: method,
-                                groupValue: _selectedMethod,
-                                onChanged: (value) =>
-                                    setState(() => _selectedMethod = value!),
-                                title: Text(method),
-                              ),
-                            ),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 10),
                 CustomButton(
-                  label: 'Confirm Payment',
-                  onPressed: _pay,
-                  isBusy: provider.isProcessing,
+                  label: 'Send Booking Request',
+                  onPressed: _submitBookingRequest,
+                  isBusy: _isSubmitting,
                 ),
               ],
             ),

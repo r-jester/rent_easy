@@ -6,10 +6,10 @@ import 'constants/strings.dart';
 import 'providers/auth_provider.dart';
 import 'screens/common/login_screen.dart';
 import 'screens/common/onboarding_screen.dart';
-import 'screens/common/role_selection_screen.dart';
 import 'screens/common/splash_screen.dart';
 import 'screens/owner/owner_home_screen.dart';
 import 'screens/renter/renter_home_screen.dart';
+import 'screens/superadmin/superadmin_home_screen.dart';
 
 class RentEasyApp extends StatelessWidget {
   const RentEasyApp({super.key});
@@ -45,7 +45,10 @@ class RentEasyApp extends StatelessWidget {
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 14,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: AppColors.border),
@@ -64,7 +67,9 @@ class RentEasyApp extends StatelessWidget {
           selectedColor: const Color(0xFFD8EFE6),
           disabledColor: const Color(0xFFE5E7EB),
           side: const BorderSide(color: AppColors.border),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           labelStyle: const TextStyle(color: AppColors.textPrimary),
         ),
         navigationBarTheme: NavigationBarThemeData(
@@ -77,14 +82,18 @@ class RentEasyApp extends StatelessWidget {
         cardTheme: CardThemeData(
           color: Colors.white,
           elevation: 1,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           margin: EdgeInsets.zero,
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             minimumSize: const Size(0, 48),
           ),
         ),
@@ -92,7 +101,9 @@ class RentEasyApp extends StatelessWidget {
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primaryDark,
             side: const BorderSide(color: AppColors.border),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             minimumSize: const Size(0, 48),
           ),
         ),
@@ -126,8 +137,11 @@ class RentEasyApp extends StatelessWidget {
           if (!auth.isLoggedIn) {
             return const LoginScreen();
           }
-          if (auth.requiresRoleSelection) {
-            return const RoleSelectionScreen();
+          if (auth.role == null) {
+            return const LoginScreen();
+          }
+          if (auth.role == UserRole.superadmin) {
+            return const SuperAdminHomeScreen();
           }
           return auth.role == UserRole.owner
               ? const OwnerHomeScreen()

@@ -15,13 +15,13 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _loading = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _identifierController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -29,11 +29,19 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
-    await context.read<AuthProvider>().login(
-          email: _emailController.text,
-          password: _passwordController.text,
-        );
-    if (mounted) setState(() => _loading = false);
+    try {
+      await context.read<AuthProvider>().login(
+            identifier: _identifierController.text,
+            password: _passwordController.text,
+          );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -50,9 +58,12 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 children: [
                   TextFormField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(labelText: 'Email'),
-                    validator: Validators.email,
+                    controller: _identifierController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email or Username',
+                      hintText: 'Enter email or username',
+                    ),
+                    validator: Validators.emailOrUsername,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(

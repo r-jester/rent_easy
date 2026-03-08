@@ -18,7 +18,7 @@ class PropertyProvider extends ChangeNotifier {
 
   Future<void> initialize() async {
     await _loadProperties();
-    _loadBookings();
+    await _loadBookings();
     _isLoading = false;
     notifyListeners();
   }
@@ -40,11 +40,13 @@ class PropertyProvider extends ChangeNotifier {
       ..addAll(_safeParseProperties(box.values));
   }
 
-  void _loadBookings() {
+  Future<void> _loadBookings() async {
     final box = StorageService.instance.bookingStore;
+    final parsed = _safeParseBookings(box.values).toList();
+
     _bookings
       ..clear()
-      ..addAll(_safeParseBookings(box.values));
+      ..addAll(parsed);
     _bookings.sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
@@ -151,13 +153,68 @@ class PropertyProvider extends ChangeNotifier {
     return _bookings.where((b) => b.renterId == renterId).toList();
   }
 
+  /// Check if renter has active booking (Pending/Approved) for a property
+  bool hasActiveBookingForProperty(String renterId, String propertyId) {
+    return _bookings.any((b) =>
+        b.renterId == renterId &&
+        b.propertyId == propertyId &&
+        ['Pending', 'Approved'].contains(b.status));
+  }
+
+  /// Check if a status transition is valid
+  bool _isValidStatusTransition(String currentStatus, String newStatus) {
+    final validTransitions = {
+      'Pending': ['Approved', 'Rejected', 'Cancelled'],
+      'Approved': [], // No transitions allowed from Approved
+      'Rejected': [], // No transitions allowed from Rejected
+      'Cancelled': [], // No transitions allowed from Cancelled
+    };
+    return validTransitions[currentStatus]?.contains(newStatus) ?? false;
+  }
+
+  /// Update booking status with proper validations
   Future<void> updateBookingStatus({
     required String bookingId,
     required String status,
   }) async {
     final index = _bookings.indexWhere((b) => b.id == bookingId);
     if (index == -1) return;
-    final updated = _bookings[index].copyWith(status: status);
+
+    final booking = _bookings[index];
+
+    // Validate status transition
+    if (!_isValidStatusTransition(booking.status, status)) {
+      debugPrint('Invalid status transition: ${booking.status} -> $status');
+      return;
+    }
+
+    // Update booking status with appropriate timestamp
+    Booking updated;
+    if (status == 'Approved') {
+      updated = booking.copyWith(status: status, approvedAt: DateTime.now());
+    } else if (status == 'Rejected') {
+      updated = booking.copyWith(status: status, rejectedAt: DateTime.now());
+    } else if (status == 'Cancelled') {
+      updated = booking.copyWith(status: status, cancelledAt: DateTime.now());
+    } else {
+      updated = booking.copyWith(status: status);
+    }
+
+    _bookings[index] = updated;
+    await StorageService.instance.bookingStore.put(updated.id, updated.toMap());
+    notifyListeners();
+  }
+
+  Future<void> attachPaymentToBooking({
+    required String bookingId,
+    required String paymentId,
+  }) async {
+    final index = _bookings.indexWhere((b) => b.id == bookingId);
+    if (index == -1) return;
+
+    final booking = _bookings[index];
+    final updated = booking.copyWith(paymentId: paymentId);
+
     _bookings[index] = updated;
     await StorageService.instance.bookingStore.put(updated.id, updated.toMap());
     notifyListeners();
@@ -192,4 +249,5 @@ class PropertyProvider extends ChangeNotifier {
     }
     return parsed;
   }
+
 }

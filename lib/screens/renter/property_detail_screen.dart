@@ -17,6 +17,8 @@ class PropertyDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final userId = context.watch<AuthProvider>().currentUserId ?? '';
+    final propertyProvider = context.watch<PropertyProvider>();
+    final hasActiveBooking = propertyProvider.hasActiveBookingForProperty(userId, property.id);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Property Detail')),
@@ -84,15 +86,20 @@ class PropertyDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: CustomButton(
-                        label: 'Rent / Book',
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => FakePaymentScreen(property: property),
-                          ),
-                        ),
-                      ),
+                      child: hasActiveBooking
+                          ? CustomButton(
+                              label: 'Already Booked',
+                              onPressed: null,
+                            )
+                          : CustomButton(
+                              label: 'Request Booking',
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => FakePaymentScreen(property: property),
+                                ),
+                              ),
+                            ),
                     ),
                   ],
                 ),

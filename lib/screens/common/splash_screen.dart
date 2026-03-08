@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/colors.dart';
 import '../../constants/strings.dart';
 
 class SplashScreen extends StatelessWidget {
@@ -12,7 +13,7 @@ class SplashScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: const [
-            Icon(Icons.home_work, size: 72),
+            Icon(Icons.home_work, size: 84, color: AppColors.primary),
             SizedBox(height: 16),
             Text(
               AppStrings.appName,

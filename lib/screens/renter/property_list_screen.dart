@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../constants/colors.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/property_provider.dart';
 import '../../utils/extensions.dart';
 import '../../widgets/loading_indicator.dart';
@@ -30,9 +31,11 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<PropertyProvider>(
-      builder: (context, provider, _) {
+    return Consumer2<AuthProvider, PropertyProvider>(
+      builder: (context, auth, provider, _) {
         if (provider.isLoading) return const LoadingIndicator();
+
+        final renterId = auth.currentUserId ?? '';
 
         final locations = <String>{
           'All Locations',
@@ -45,7 +48,8 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
               _selectedLocation == 'All Locations' || p.location == _selectedLocation;
           final inPrice = p.pricePerMonth <= _maxPrice;
           final inBedrooms = p.bedrooms >= _minBedrooms;
-          return inLocation && inPrice && inBedrooms;
+          final noActiveBooking = !provider.hasActiveBookingForProperty(renterId, p.id);
+          return inLocation && inPrice && inBedrooms && noActiveBooking;
         }).toList();
 
         switch (_sortBy) {
@@ -215,53 +219,56 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              DropdownButtonFormField<String>(
-                                isExpanded: true,
-                                value: draftLocation,
-                                decoration: const InputDecoration(
-                                  labelText: 'Location',
-                                  prefixIcon: Icon(Icons.place_outlined),
-                                ),
-                                items: locations
+                              DropdownMenu<String>(
+                                key: ValueKey('filter-location-$draftLocation'),
+                                label: const Text('Location'),
+                                hintText: 'Select location',
+                                leadingIcon: const Icon(Icons.place_outlined),
+                                initialSelection: draftLocation,
+                                enableSearch: true,
+                                enableFilter: true,
+                                requestFocusOnTap: true,
+                                keyboardType: TextInputType.text,
+                                expandedInsets: EdgeInsets.zero,
+                                dropdownMenuEntries: locations
                                     .map(
-                                      (item) => DropdownMenuItem(
+                                      (item) => DropdownMenuEntry(
                                         value: item,
-                                        child: Text(
-                                          item,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
+                                        label: item,
                                       ),
                                     )
                                     .toList(),
-                                onChanged: (value) {
+                                onSelected: (value) {
                                   setModalState(
                                     () => draftLocation = value ?? locations.first,
                                   );
                                 },
                               ),
                               const SizedBox(height: 12),
-                              DropdownButtonFormField<String>(
-                                isExpanded: true,
-                                value: draftSortBy,
-                                decoration: const InputDecoration(
-                                  labelText: 'Sort by',
-                                  prefixIcon: Icon(Icons.sort),
-                                ),
-                                items: const [
-                                  'Recommended',
-                                  'Price: Low to High',
-                                  'Price: High to Low',
-                                  'Bedrooms',
-                                ]
-                                    .map(
-                                      (item) => DropdownMenuItem(
-                                        value: item,
-                                        child: Text(item),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (value) {
+                              DropdownMenu<String>(
+                                key: ValueKey('filter-sort-$draftSortBy'),
+                                label: const Text('Sort by'),
+                                hintText: 'Select sort option',
+                                leadingIcon: const Icon(Icons.sort),
+                                initialSelection: draftSortBy,
+                                enableSearch: true,
+                                enableFilter: true,
+                                requestFocusOnTap: true,
+                                keyboardType: TextInputType.text,
+                                expandedInsets: EdgeInsets.zero,
+                                dropdownMenuEntries: const [
+                                  DropdownMenuEntry(value: 'Recommended', label: 'Recommended'),
+                                  DropdownMenuEntry(
+                                    value: 'Price: Low to High',
+                                    label: 'Price: Low to High',
+                                  ),
+                                  DropdownMenuEntry(
+                                    value: 'Price: High to Low',
+                                    label: 'Price: High to Low',
+                                  ),
+                                  DropdownMenuEntry(value: 'Bedrooms', label: 'Bedrooms'),
+                                ],
+                                onSelected: (value) {
                                   setModalState(() => draftSortBy = value ?? draftSortBy);
                                 },
                               ),

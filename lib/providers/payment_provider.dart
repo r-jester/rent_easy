@@ -10,8 +10,22 @@ class PaymentProvider extends ChangeNotifier {
   bool _isProcessing = false;
 
   bool get isProcessing => _isProcessing;
+  List<Payment> get payments {
+    _reloadFromStore();
+    return List.unmodifiable(_payments);
+  }
 
   Future<void> initialize() async {
+    _reloadFromStore();
+    notifyListeners();
+  }
+
+  List<Payment> userPayments(String userId) {
+    _reloadFromStore();
+    return _payments.where((p) => p.userId == userId).toList();
+  }
+
+  void _reloadFromStore() {
     final box = StorageService.instance.paymentStore;
     _payments
       ..clear()
@@ -21,11 +35,6 @@ class PaymentProvider extends ChangeNotifier {
         ),
       );
     _payments.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    notifyListeners();
-  }
-
-  List<Payment> userPayments(String userId) {
-    return _payments.where((p) => p.userId == userId).toList();
   }
 
   Future<Payment> processPayment({

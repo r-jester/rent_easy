@@ -7,7 +7,7 @@ import '../../providers/property_provider.dart';
 import '../../utils/date_utils.dart';
 import '../../utils/extensions.dart';
 import '../../widgets/bottom_nav_bar.dart';
-import 'add_property_screen.dart';
+import '../../widgets/notification_bell.dart';
 import 'booking_request_screen.dart';
 import 'owner_property_list_screen.dart';
 import 'profile_screen.dart';
@@ -21,39 +21,44 @@ class OwnerHomeScreen extends StatefulWidget {
 
 class _OwnerHomeScreenState extends State<OwnerHomeScreen> {
   int _index = 0;
+  String? _selectedBookingIdFromNotification;
 
   List<Widget> _buildScreens() {
     return [
       const OwnerDashboardBody(),
       const OwnerPropertyListScreen(),
-      const BookingRequestScreen(),
+      BookingRequestScreen(
+        selectedBookingId: _selectedBookingIdFromNotification,
+        onSelectionConsumed: () {
+          if (!mounted || _selectedBookingIdFromNotification == null) return;
+          setState(() => _selectedBookingIdFromNotification = null);
+        },
+      ),
       const OwnerProfileScreen(),
     ];
   }
 
   final _titles = const ['Dashboard', 'My Properties', 'Bookings', 'Profile'];
 
-  void _openAddProperty() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const AddPropertyScreen()),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 1000;
     final screens = _buildScreens();
+    final auth = context.watch<AuthProvider>();
+    final ownerId = auth.currentUserId ?? '';
 
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_index]),
         actions: [
-          if (_index == 0 || _index == 1)
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: _openAddProperty,
-            ),
+          NotificationBell(
+            userId: ownerId,
+            role: UserRole.owner,
+            onNavigateToBookings: (bookingId) => setState(() {
+              _index = 2;
+              _selectedBookingIdFromNotification = bookingId;
+            }),
+          ),
         ],
       ),
       body: isWide
@@ -61,7 +66,8 @@ class _OwnerHomeScreenState extends State<OwnerHomeScreen> {
               children: [
                 NavigationRail(
                   selectedIndex: _index,
-                  onDestinationSelected: (value) => setState(() => _index = value),
+                  onDestinationSelected: (value) =>
+                      setState(() => _index = value),
                   labelType: NavigationRailLabelType.all,
                   destinations: const [
                     NavigationRailDestination(
@@ -125,8 +131,12 @@ class OwnerDashboardBody extends StatelessWidget {
         final ownerId = auth.currentUserId ?? '';
         final properties = propertyProvider.ownerProperties(ownerId);
         final bookings = propertyProvider.ownerBookings(ownerId);
-        final pendingBookings = bookings.where((b) => b.status == 'Pending').length;
-        final approvedBookings = bookings.where((b) => b.status == 'Approved').length;
+        final pendingBookings = bookings
+            .where((b) => b.status == 'Pending')
+            .length;
+        final approvedBookings = bookings
+            .where((b) => b.status == 'Approved')
+            .length;
         final monthlyPotential = properties.fold<double>(
           0,
           (sum, item) => sum + item.pricePerMonth,
@@ -217,20 +227,26 @@ class OwnerDashboardBody extends StatelessWidget {
                   children: [
                     const Text(
                       'Recent Booking Activity',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     if (recent.isEmpty)
                       const Text('No booking activity yet.')
                     else
-                      ...recent.take(4).map(
+                      ...recent
+                          .take(4)
+                          .map(
                             (booking) => Padding(
                               padding: const EdgeInsets.only(bottom: 10),
                               child: Row(
                                 children: [
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           booking.propertyTitle,
@@ -264,10 +280,7 @@ class OwnerDashboardBody extends StatelessWidget {
     );
   }
 
-  Widget _heroCard({
-    required String ownerEmail,
-    required int pendingBookings,
-  }) {
+  Widget _heroCard({required String ownerEmail, required int pendingBookings}) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -290,10 +303,7 @@ class OwnerDashboardBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            ownerEmail,
-            style: const TextStyle(color: Colors.white70),
-          ),
+          Text(ownerEmail, style: const TextStyle(color: Colors.white70)),
           const SizedBox(height: 10),
           Text(
             pendingBookings > 0
@@ -378,11 +388,7 @@ class OwnerDashboardBody extends StatelessWidget {
       ),
       child: Text(
         status,
-        style: TextStyle(
-          color: fg,
-          fontWeight: FontWeight.w700,
-          fontSize: 12,
-        ),
+        style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 12),
       ),
     );
   }

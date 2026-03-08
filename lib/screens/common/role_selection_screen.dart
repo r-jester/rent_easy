@@ -4,7 +4,18 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
-  const RoleSelectionScreen({super.key});
+  final String userId;
+
+  const RoleSelectionScreen({
+    super.key,
+    required this.userId,
+  });
+
+  Future<void> _selectRole(BuildContext context, UserRole role) async {
+    await context.read<AuthProvider>().setRoleForUser(userId: userId, role: role);
+    if (!context.mounted) return;
+    Navigator.pop(context, true);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,14 +28,14 @@ class RoleSelectionScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                const Text('Choose your role. This is required once after register.'),
+                const Text('Choose your role to complete registration.'),
                 const SizedBox(height: 16),
                 Card(
                   child: ListTile(
                     leading: const Icon(Icons.person_search_outlined),
                     title: const Text('Renter'),
                     subtitle: const Text('Browse and request properties'),
-                    onTap: () => context.read<AuthProvider>().setRole(UserRole.renter),
+                    onTap: () => _selectRole(context, UserRole.renter),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -33,7 +44,7 @@ class RoleSelectionScreen extends StatelessWidget {
                     leading: const Icon(Icons.storefront_outlined),
                     title: const Text('Property Owner'),
                     subtitle: const Text('Create and manage property listings'),
-                    onTap: () => context.read<AuthProvider>().setRole(UserRole.owner),
+                    onTap: () => _selectRole(context, UserRole.owner),
                   ),
                 ),
               ],

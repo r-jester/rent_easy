@@ -52,6 +52,11 @@ class PaymentRecordDetailScreen extends StatelessWidget {
                       _item('Amount', payment.amount.toUsd()),
                       _item('Method', payment.method),
                       _item('Status', payment.status),
+                      _item('Refund Status', payment.refundStatus),
+                      if (payment.refundStatus == 'Processed')
+                        _item('Refunded Amount', payment.refundedAmount.toUsd()),
+                      if (payment.refundedAt != null)
+                        _item('Refunded At', AppDateUtils.pretty(payment.refundedAt!)),
                       _item('Created At', AppDateUtils.pretty(payment.createdAt)),
                     ],
                   ),
@@ -86,17 +91,27 @@ class PaymentRecordDetailScreen extends StatelessWidget {
   }
 
   Widget _statusPill(String status) {
-    final isSuccess = status == 'Success';
+    final label = payment.refundStatus == 'Processed' ? 'Refunded' : status;
+    final isSuccess = label == 'Success';
+    final isRefunded = label == 'Refunded';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: isSuccess ? const Color(0xFFD8EFE6) : const Color(0xFFFBE4E4),
+        color: isRefunded
+            ? const Color(0xFFE2E8F0)
+            : isSuccess
+                ? const Color(0xFFD8EFE6)
+                : const Color(0xFFFBE4E4),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        status,
+        label,
         style: TextStyle(
-          color: isSuccess ? AppColors.success : AppColors.danger,
+          color: isRefunded
+              ? AppColors.primaryDark
+              : isSuccess
+                  ? AppColors.success
+                  : AppColors.danger,
           fontWeight: FontWeight.w700,
         ),
       ),

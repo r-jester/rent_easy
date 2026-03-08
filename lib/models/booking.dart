@@ -11,6 +11,9 @@ class Booking {
   final String note;
   final String paymentId;
   final DateTime createdAt;
+  final DateTime? approvedAt; // When owner approved
+  final DateTime? rejectedAt; // When owner rejected
+  final DateTime? cancelledAt; // When renter cancelled
 
   const Booking({
     required this.id,
@@ -25,6 +28,9 @@ class Booking {
     required this.note,
     required this.paymentId,
     required this.createdAt,
+    this.approvedAt,
+    this.rejectedAt,
+    this.cancelledAt,
   });
 
   Map<String, dynamic> toMap() {
@@ -41,6 +47,9 @@ class Booking {
       'note': note,
       'paymentId': paymentId,
       'createdAt': createdAt.toIso8601String(),
+      'approvedAt': approvedAt?.toIso8601String(),
+      'rejectedAt': rejectedAt?.toIso8601String(),
+      'cancelledAt': cancelledAt?.toIso8601String(),
     };
   }
 
@@ -67,10 +76,25 @@ class Booking {
       note: map['note'] as String? ?? '',
       paymentId: map['paymentId'] as String? ?? '',
       createdAt: DateTime.parse(map['createdAt'] as String),
+      approvedAt: map['approvedAt'] == null
+          ? null
+          : DateTime.parse(map['approvedAt'] as String),
+      rejectedAt: map['rejectedAt'] == null
+          ? null
+          : DateTime.parse(map['rejectedAt'] as String),
+      cancelledAt: map['cancelledAt'] == null
+          ? null
+          : DateTime.parse(map['cancelledAt'] as String),
     );
   }
 
-  Booking copyWith({String? status}) {
+  Booking copyWith({
+    String? status,
+    String? paymentId,
+    DateTime? approvedAt,
+    DateTime? rejectedAt,
+    DateTime? cancelledAt,
+  }) {
     return Booking(
       id: id,
       propertyId: propertyId,
@@ -82,8 +106,11 @@ class Booking {
       moveInDate: moveInDate,
       leaseMonths: leaseMonths,
       note: note,
-      paymentId: paymentId,
+      paymentId: paymentId ?? this.paymentId,
       createdAt: createdAt,
+      approvedAt: approvedAt ?? this.approvedAt,
+      rejectedAt: rejectedAt ?? this.rejectedAt,
+      cancelledAt: cancelledAt ?? this.cancelledAt,
     );
   }
 }
