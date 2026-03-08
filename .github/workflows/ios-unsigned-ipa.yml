@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - main
   workflow_dispatch:
 
 jobs:
@@ -17,6 +18,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.41.4'
           channel: stable
           cache: true
 
@@ -25,13 +27,26 @@ jobs:
 
       - name: Generate iOS project if missing
         run: |
+          flutter config --enable-ios
           if [ ! -d "ios" ]; then
             flutter create --platforms=ios .
           fi
 
+      - name: Prepare iOS build files
+        run: |
+          flutter build ios --release --no-codesign || true
+
       - name: Install CocoaPods dependencies
         run: |
+          if [ ! -d "ios" ]; then
+            echo "iOS directory was not generated"
+            exit 1
+          fi
           cd ios
+          if [ ! -f "Podfile" ]; then
+            echo "Podfile was not generated"
+            exit 1
+          fi
           pod install --repo-update
 
       - name: Build iOS app bundle
@@ -41,9 +56,7 @@ jobs:
         run: |
           mkdir -p Payload
           cp -R build/ios/iphoneos/Runner.app Payload/
-          cd Payload
-          zip -r ../unsigned-app.ipa Runner.app
-          cd ..
+          ditto -c -k --sequesterRsrc --keepParent Payload unsigned-app.ipa
           rm -rf Payload
 
       - name: Upload IPA artifact
